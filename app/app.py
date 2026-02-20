@@ -14,17 +14,17 @@ Run with:
 import streamlit as st
 from agent import search_courses
 from faculty_agent import search_faculty
+from events_agent import search_events
 from llm import (
     extract_search_query,
-    explain_course_match,
-    explain_faculty_match,
+    explain_all_parallel,
     generate_goal_response,
 )
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="MLearn",
-    page_icon="〽️",
+    page_title="Curio",
+    page_icon="✦",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -32,413 +32,387 @@ st.set_page_config(
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, [class*="css"] {
-    font-family: 'IBM Plex Sans', sans-serif;
-    background: #E8EBF0;
-    color: #1a1a2e;
+    font-family: 'Inter', sans-serif;
+    background: #080C14;
+    color: #E2E8F4;
 }
-.stApp { background: #E8EBF0; }
+.stApp {
+    background:
+        radial-gradient(ellipse at 20% 20%, rgba(74,158,255,0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(120,80,255,0.04) 0%, transparent 50%),
+        #080C14;
+}
 #MainMenu, footer, header { visibility: hidden; }
 section[data-testid="stSidebar"] { display: none; }
 
 /* ── Navbar ── */
 .navbar {
-    background: #00274C;
+    background: rgba(8,12,20,0.95);
+    border-bottom: 1px solid #1E2A42;
     padding: 0 1.5rem;
-    height: 64px;
+    height: 80px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    box-shadow: 0 2px 12px rgba(0,39,76,0.4);
+    justify-content: center;
+    gap: 0.2rem;
     margin-bottom: 0;
+    backdrop-filter: blur(12px);
+    position: relative;
 }
 .navbar-logo {
-    background: #FFCB05;
-    color: #00274C;
-    font-family: 'Crimson Pro', serif;
-    font-size: 1.6rem;
-    font-weight: 700;
-    width: 44px;
-    height: 44px;
-    border-radius: 6px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #4A9EFF 0%, #7B5FFF 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    letter-spacing: -1px;
+    font-size: 1rem;
 }
+.navbar-title .star { font-size: 0.6em; opacity: 0.8; vertical-align: middle; position: relative; top: -2px; color: #C4A8FF; }
 .navbar-title {
-    color: white;
-    font-family: 'Crimson Pro', serif;
-    font-size: 1.2rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
+    color: #B0B8C8;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 3.2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    text-align: center;
+    line-height: 1;
 }
-.navbar-sub {
-    color: #A8BFDC;
-    font-size: 0.82rem;
-    margin-left: 0.25rem;
+.navbar-tagline {
+    color: #4A6080;
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: center;
 }
 
 /* ── Goal bar ── */
 .goal-bar {
-    background: #00274C;
-    padding: 0.85rem 1.5rem 1rem 1.5rem;
-    border-bottom: 3px solid #FFCB05;
+    background: rgba(14,21,37,0.9);
+    border-bottom: 1px solid #1E2A42;
+    padding: 1rem 1.5rem 1.1rem 1.5rem;
     margin-bottom: 0;
     width: 100%;
+    backdrop-filter: blur(12px);
 }
 .goal-label {
-    color: #FFCB05;
-    font-size: 0.75rem;
+    color: #E2E8F4;
+    font-size: 1.35rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.4rem;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.6rem;
 }
-
 
 /* ── Message history bar ── */
 .history-bar {
-    background: #f0f2f6;
-    border-bottom: 1px solid #dde1ea;
+    background: rgba(14,21,37,0.6);
+    border-bottom: 1px solid #1E2A42;
     padding: 0.6rem 1.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
 }
 .history-entry {
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #e4e7ed;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid #141E30;
 }
 .history-entry:last-child { border-bottom: none; }
 .history-role-user {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #00274C;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #4A9EFF;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.08em;
     white-space: nowrap;
     padding-top: 0.1rem;
-    min-width: 52px;
+    min-width: 48px;
 }
 .history-role-ai {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #888;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #7B5FFF;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.08em;
     white-space: nowrap;
     padding-top: 0.1rem;
-    min-width: 52px;
+    min-width: 48px;
 }
 .history-text {
-    font-size: 0.83rem;
-    color: #333;
+    font-size: 0.9rem;
+    color: #8899BB;
     line-height: 1.5;
 }
+
 /* ── Panel ── */
 .panel {
-    background: white;
+    background: #0E1525;
+    border: 1px solid #1E2A42;
     border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0,39,76,0.08);
     overflow: hidden;
     height: 100%;
 }
 .panel-header {
-    padding: 0.85rem 1.1rem;
-    border-bottom: 1px solid #EEF0F4;
+    padding: 0.8rem 1.1rem;
+    border-bottom: 1px solid #1E2A42;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    background: rgba(255,255,255,0.02);
+    position: relative;
+}
+.panel-header .panel-count {
+    position: absolute;
+    right: 1.1rem;
 }
 .panel-title {
-    font-family: 'Crimson Pro', serif;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #00274C;
-}
-.panel-count {
-    font-size: 0.75rem;
-    background: #F0F3F7;
-    color: #666;
-    padding: 0.15rem 0.6rem;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-/* ── Preferences panel ── */
-.pref-header {
-    background: #00274C;
-    color: #FFCB05;
-    font-family: 'Crimson Pro', serif;
-    font-size: 1.05rem;
-    font-weight: 700;
-    padding: 0.85rem 1.1rem;
-    letter-spacing: 0.02em;
-}
-.pref-body { padding: 0.9rem 1rem; }
-.pref-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    margin-bottom: 0.35rem;
-    margin-top: 0.75rem;
-    display: block;
-}
-.credit-display {
-    background: #F5F7FA;
-    border: 1.5px solid #D0D5DD;
-    border-radius: 8px;
-    padding: 0.45rem 0.8rem;
+    font-family: 'Space Grotesk', sans-serif;
     font-size: 1rem;
     font-weight: 600;
-    color: #00274C;
-    text-align: center;
-    margin-top: 0.3rem;
+    color: #8899BB;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.panel-count {
+    font-size: 0.7rem;
+    background: rgba(74,158,255,0.12);
+    color: #4A9EFF;
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    font-weight: 600;
+    border: 1px solid rgba(74,158,255,0.2);
 }
 
 /* ── Course card ── */
 .course-card {
-    padding: 0.9rem 1.1rem;
-    border-bottom: 1px solid #EEF0F4;
-    animation: fadeIn 0.25s ease forwards;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid #141E30;
+    animation: fadeUp 0.3s ease forwards;
     opacity: 0;
+    transition: background 0.15s ease;
 }
-.course-card:hover { background: #FAFBFC; }
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
+.course-card:hover { background: rgba(74,158,255,0.04); }
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 .course-title {
-    font-family: 'Crimson Pro', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #00274C;
-    margin-bottom: 0.25rem;
-    line-height: 1.3;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #E2E8F4;
+    margin-bottom: 0.3rem;
+    line-height: 1.35;
 }
 .instructor-tag {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    background: #00274C;
-    color: white;
-    border-radius: 5px;
-    padding: 0.12rem 0.45rem;
-    font-size: 0.74rem;
+    gap: 0.3rem;
+    background: rgba(74,158,255,0.1);
+    color: #4A9EFF;
+    border: 1px solid rgba(74,158,255,0.2);
+    border-radius: 4px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.82rem;
     font-weight: 500;
     margin-bottom: 0.35rem;
 }
 .why-text {
-    font-size: 0.8rem;
-    color: #444;
-    margin-bottom: 0.35rem;
+    font-size: 0.88rem;
+    color: #7A8FA8;
+    margin-bottom: 0.3rem;
     display: flex;
     align-items: flex-start;
-    gap: 0.3rem;
-    line-height: 1.4;
+    gap: 0.35rem;
+    line-height: 1.45;
 }
 .why-text::before {
-    content: '✓';
-    color: #00274C;
-    font-weight: 700;
+    content: '→';
+    color: #4A9EFF;
+    font-weight: 600;
     flex-shrink: 0;
+    opacity: 0.8;
 }
 .card-meta {
-    font-size: 0.76rem;
-    color: #888;
-    margin-bottom: 0.4rem;
+    font-size: 0.82rem;
+    color: #4A6080;
+    margin-bottom: 0.3rem;
 }
-.card-meta .sep { color: #CCC; margin: 0 0.3rem; }
 
 /* ── Faculty card ── */
 .faculty-card {
-    padding: 0.9rem 1.1rem;
-    border-bottom: 1px solid #EEF0F4;
-    animation: fadeIn 0.25s ease forwards;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid #141E30;
+    animation: fadeUp 0.3s ease forwards;
     opacity: 0;
 }
-.faculty-card:hover { background: #FAFBFC; }
+.faculty-card:hover { background: rgba(123,95,255,0.04); }
 .faculty-name {
-    font-family: 'Crimson Pro', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #00274C;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #E2E8F4;
     margin-bottom: 0.15rem;
 }
 .faculty-title-text {
-    font-size: 0.76rem;
-    color: #777;
+    font-size: 0.82rem;
+    color: #4A6080;
     margin-bottom: 0.4rem;
     line-height: 1.4;
 }
 .why-faculty {
-    font-size: 0.8rem;
-    color: #444;
-    background: #F5F7FA;
-    border-left: 3px solid #FFCB05;
+    font-size: 0.88rem;
+    color: #7A8FA8;
+    background: rgba(123,95,255,0.06);
+    border-left: 2px solid #7B5FFF;
     padding: 0.4rem 0.65rem;
     border-radius: 0 6px 6px 0;
     margin-bottom: 0.4rem;
-    line-height: 1.4;
-    font-style: italic;
+    line-height: 1.45;
 }
 .profile-link {
-    font-size: 0.78rem;
-    color: #00274C;
-    font-weight: 600;
+    font-size: 0.84rem;
+    color: #4A9EFF;
+    font-weight: 500;
     text-decoration: none;
+    opacity: 0.8;
 }
-.profile-link:hover { text-decoration: underline; }
+.profile-link:hover { opacity: 1; text-decoration: underline; }
+
+/* ── Event card ── */
+.event-card {
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid #141E30;
+    animation: fadeUp 0.3s ease forwards;
+    opacity: 0;
+}
+.event-card:hover { background: rgba(74,255,178,0.03); }
+.event-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #E2E8F4;
+    margin-bottom: 0.25rem;
+    line-height: 1.35;
+}
+.event-type {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: rgba(74,255,178,0.08);
+    color: #4AFFB2;
+    border: 1px solid rgba(74,255,178,0.15);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    margin-bottom: 0.35rem;
+}
+.event-why {
+    font-size: 0.88rem;
+    color: #7A8FA8;
+    margin-bottom: 0.3rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    line-height: 1.45;
+}
+.event-why::before {
+    content: '→';
+    color: #4AFFB2;
+    font-weight: 600;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+.event-meta {
+    font-size: 0.82rem;
+    color: #4A6080;
+    margin-bottom: 0.3rem;
+}
+.event-link {
+    font-size: 0.84rem;
+    color: #4AFFB2;
+    font-weight: 500;
+    text-decoration: none;
+    opacity: 0.8;
+}
+.event-link:hover { opacity: 1; text-decoration: underline; }
+.event-cost {
+    display: inline-block;
+    font-size: 0.68rem;
+    background: rgba(74,255,178,0.08);
+    color: #4AFFB2;
+    border: 1px solid rgba(74,255,178,0.15);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    margin-left: 0.4rem;
+}
 
 /* ── Empty state ── */
 .empty-state {
-    padding: 2.5rem 1.2rem;
+    padding: 3rem 1.2rem;
     text-align: center;
-    color: #BBB;
 }
-.empty-icon { font-size: 2rem; margin-bottom: 0.6rem; }
+.empty-icon { font-size: 1.8rem; margin-bottom: 0.7rem; opacity: 0.4; }
 .empty-text {
-    font-family: 'Crimson Pro', serif;
-    font-size: 1rem;
-    color: #999;
-}
-
-/* ── Chat panel ── */
-.chat-header {
-    background: #F5F7FA;
-    padding: 0.85rem 1.1rem;
-    border-bottom: 1px solid #EEF0F4;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.chat-header-title {
-    font-family: 'Crimson Pro', serif;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #00274C;
-}
-.chat-history {
-    padding: 0.85rem 0.9rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    max-height: 420px;
-    overflow-y: auto;
-}
-.chat-msg-user { display: flex; gap: 0.5rem; align-items: flex-start; }
-.chat-avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: #00274C; color: #FFCB05;
-    font-weight: 700; font-size: 0.7rem;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-}
-.chat-bubble-user {
-    background: #F0F3F7;
-    border-radius: 4px 10px 10px 10px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
-    color: #1a1a2e;
-    line-height: 1.45;
-    flex: 1;
-}
-.chat-msg-agent { display: flex; flex-direction: row-reverse; gap: 0.5rem; align-items: flex-start; }
-.chat-avatar-agent {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: #FFCB05; color: #00274C;
-    font-weight: 700; font-size: 0.65rem;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-}
-.chat-bubble-agent {
-    background: #E8F0FB;
-    border-radius: 10px 4px 10px 10px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
-    color: #1a1a2e;
+    font-size: 0.92rem;
+    color: #FFFFFF;
     line-height: 1.5;
-    flex: 1;
-}
-.chat-input-section {
-    padding: 0.7rem 0.9rem;
-    border-top: 1px solid #EEF0F4;
-    background: #FAFBFC;
-}
-.chat-input-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: #999;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    margin-bottom: 0.35rem;
 }
 
 /* ── Streamlit overrides ── */
 div[data-testid="stTextInput"] > div > div > input {
     border-radius: 8px !important;
-    border: 1.5px solid #D0D5DD !important;
-    background: white !important;
-    color: #1a1a2e !important;
-    caret-color: #00274C !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
+    border: 1px solid #6B4FA0 !important;
+    background: #2A1F3D !important;
+    color: #E2E8F4 !important;
+    caret-color: #C4A8FF !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 0.9rem !important;
     padding: 0.6rem 0.9rem !important;
 }
 div[data-testid="stTextInput"] > div > div > input::placeholder {
-    color: #AAB0BC !important;
-    opacity: 1 !important;
-    font-style: italic;
+    color: #FFFFFF !important;
+    opacity: 0.6 !important;
 }
 div[data-testid="stTextInput"] > div > div > input:focus {
-    border-color: #00274C !important;
-    box-shadow: 0 0 0 3px rgba(0,39,76,0.1) !important;
+    border-color: #C4A8FF !important;
+    box-shadow: 0 0 0 3px rgba(196,168,255,0.15) !important;
 }
-
-/* Goal bar input — white text on dark bg */
-.goal-bar div[data-testid="stTextInput"] > div > div > input {
-    background: rgba(255,255,255,0.1) !important;
-    border-color: rgba(255,255,255,0.3) !important;
-    color: white !important;
-    caret-color: #FFCB05 !important;
-}
-.goal-bar div[data-testid="stTextInput"] > div > div > input::placeholder {
-    color: rgba(255,255,255,0.45) !important;
-}
-
 div[data-testid="stForm"] { border: none !important; padding: 0 !important; background: transparent !important; }
 
 .stButton > button {
-    background: #FFCB05 !important;
-    color: #00274C !important;
+    background: linear-gradient(135deg, #4A9EFF, #7B5FFF) !important;
+    color: white !important;
     border: none !important;
     border-radius: 8px !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
-    font-weight: 700 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
     padding: 0.55rem 1.1rem !important;
     font-size: 0.88rem !important;
     width: 100% !important;
+    letter-spacing: 0.01em !important;
 }
-.stButton > button:hover { background: #FFD740 !important; }
+.stButton > button:hover {
+    opacity: 0.9 !important;
+    transform: translateY(-1px) !important;
+}
 
-div[data-testid="stSlider"] > div { padding: 0 !important; }
-div[data-testid="stSlider"] label { display: none !important; }
-div[data-testid="stSelectbox"] > div > div { border-radius: 8px !important; border: 1.5px solid #D0D5DD !important; font-size: 0.85rem !important; }
-
-/* Progress bar — black */
+/* Progress bar */
 .stProgress > div > div > div > div {
-    background: #000000 !important;
+    background: linear-gradient(90deg, #4A9EFF, #7B5FFF) !important;
 }
 .stProgress > div > div > div {
-    background: #E0E0E0 !important;
+    background: #1E2A42 !important;
     border-radius: 0 !important;
 }
 .stProgress {
@@ -449,9 +423,10 @@ div[data-testid="stSelectbox"] > div > div { border-radius: 8px !important; bord
     padding: 0 !important;
 }
 div[data-testid="stStatusWidget"] { display: none; }
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D0D5DD; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #1E2A42; border-radius: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -460,6 +435,7 @@ defaults = {
     "messages": [],
     "courses": [],
     "faculty": [],
+    "events": [],
     "time_pref": "Morning",
     "credit_target": 12,
     "top_k": 10,
@@ -472,8 +448,8 @@ for k, v in defaults.items():
 # ── NAVBAR ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="navbar">
-    <div class="navbar-logo">M</div>
-    <span class="navbar-title">MLearn</span>
+    <span class="navbar-title"><span class="star">✦</span> Curio <span class="star">✦</span></span>
+    <span class="navbar-tagline">your academic pathfinder</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -499,7 +475,7 @@ if st.session_state.messages:
     st.markdown('<div class="history-bar">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
         role_class = "history-role-user" if msg["role"] == "user" else "history-role-ai"
-        role_label = "You" if msg["role"] == "user" else "MLearn"
+        role_label = "You" if msg["role"] == "user" else "Curio"
         text = msg["content"]
         # Truncate long AI responses in the history view
         if msg["role"] == "assistant" and len(text) > 300:
@@ -514,7 +490,7 @@ if st.session_state.messages:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ── MAIN LAYOUT ───────────────────────────────────────────────────────────────
-courses_col, faculty_col = st.columns([1, 1], gap="medium")
+courses_col, faculty_col, events_col = st.columns([1, 1, 1], gap="medium")
 
 # ═══════════════════════════════
 # CENTER-LEFT — Courses
@@ -534,7 +510,6 @@ with courses_col:
     if not courses:
         st.markdown("""
         <div class="empty-state">
-            <div class="empty-icon">📖</div>
             <div class="empty-text">Enter a learning goal to see course recommendations</div>
         </div>
         """, unsafe_allow_html=True)
@@ -594,7 +569,6 @@ with faculty_col:
     if not faculty:
         st.markdown("""
         <div class="empty-state">
-            <div class="empty-icon">🤝</div>
             <div class="empty-text">Enter a learning goal to find faculty to network with</div>
         </div>
         """, unsafe_allow_html=True)
@@ -612,6 +586,65 @@ with faculty_col:
                 <div class="faculty-name">{f.get('name','')}</div>
                 <div class="faculty-title-text">{f.get('titles','')}</div>
                 {why_html}{profile_html}
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ═══════════════════════════════
+# RIGHT — Events
+# ═══════════════════════════════
+with events_col:
+    events = st.session_state.events
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    event_count_html = f'<span class="panel-count">{len(events)} found</span>' if events else ""
+    st.markdown(
+        f'<div class="panel-header">'
+        f'<span class="panel-title">📅 Campus Events</span>'
+        f'{event_count_html}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    if not events:
+        st.markdown("""
+        <div class="empty-state">
+            <div class="empty-text">Enter a learning goal to discover relevant campus events</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        for i, e in enumerate(events):
+            delay = i * 0.06
+            why = e.get("explanation", "")
+            permalink = e.get("permalink", "")
+            start = e.get("start", "")
+            location = e.get("location", "")
+            cost = e.get("cost", "")
+            event_type = e.get("type", "")
+
+            why_html = f'<div class="event-why">{why}</div>' if why else ""
+            link_html = f'<a class="event-link" href="{permalink}" target="_blank">View Event →</a>' if permalink else ""
+
+            meta_parts = []
+            if start:
+                meta_parts.append(f"📅 {start}")
+            if location:
+                location_short = location[:40] + ("..." if len(location) > 40 else "")
+            meta_parts.append(f"📍 {location_short}")
+            meta_str = "  ·  ".join(meta_parts)
+            meta_html = f'<div class="event-meta">{meta_str}</div>' if meta_str else ""
+
+            cost_html = ""
+            if cost:
+                short_cost = cost if len(cost) < 30 else "See event"
+                cost_html = f'<span class="event-cost">{short_cost}</span>'
+
+            st.markdown(f"""
+            <div class="event-card" style="animation-delay:{delay}s">
+                <div class="event-title">{e.get("title", "")}</div>
+                <span class="event-type">{event_type}</span>{cost_html}
+                {why_html}{meta_html}{link_html}
             </div>
             """, unsafe_allow_html=True)
 
@@ -636,20 +669,19 @@ if st.session_state.pending_query:
         search_query = extract_search_query(query, history)
         progress.progress(35)
         courses = search_courses(search_query, top_k=10)
-        progress.progress(55)
+        progress.progress(50)
         faculty = search_faculty(search_query, top_k=10)
+        progress.progress(60)
+        events = search_events(search_query, top_k=10)
         progress.progress(70)
-        for c in courses:
-            c["explanation"] = explain_course_match(c, query, history)
-        progress.progress(85)
-        for f in faculty:
-            f["explanation"] = explain_faculty_match(f, query, history)
+        explain_all_parallel(courses, faculty, events, query, history)
         progress.progress(95)
-        response = generate_goal_response(query, courses, faculty, history)
+        response = generate_goal_response(query, courses, faculty, history, events)
         progress.progress(100)
         progress.empty()
         st.session_state.courses = courses
         st.session_state.faculty = faculty
+        st.session_state.events = events
         st.session_state.messages.append({"role": "assistant", "content": response})
     except Exception as e:
         progress.empty()
@@ -659,5 +691,6 @@ if st.session_state.pending_query:
         })
         st.session_state.courses = []
         st.session_state.faculty = []
+        st.session_state.events = []
 
     st.rerun()

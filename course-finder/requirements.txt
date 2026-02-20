@@ -1,4 +1,0 @@
-ollama
-chromadb
-streamlit
-pandas
