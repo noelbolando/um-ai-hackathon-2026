@@ -13,12 +13,12 @@ Each result includes a 'source' field indicating which catalog it came from.
 """
 
 import chromadb
-import ollama
+from sentence_transformers import SentenceTransformer
+_embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 CHROMA_DIR      = "chroma_db"
 COLLECTION_NAME = "courses"
-EMBED_MODEL     = "nomic-embed-text"
 DEFAULT_TOP_K   = 10
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -26,11 +26,6 @@ DEFAULT_TOP_K   = 10
 def _get_collection():
     client = chromadb.PersistentClient(path=CHROMA_DIR)
     return client.get_collection(COLLECTION_NAME)
-
-
-def embed_query(query: str) -> list[float]:
-    response = ollama.embeddings(model=EMBED_MODEL, prompt=query)
-    return response["embedding"]
 
 
 def search_courses(query: str, top_k: int = DEFAULT_TOP_K) -> list[dict]:

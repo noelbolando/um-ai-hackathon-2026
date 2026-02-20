@@ -12,20 +12,24 @@ Responsibilities:
   6. generate_goal_response()     — unified response covering courses, faculty + events
 """
 
-import ollama
+import os
+import streamlit as st
+from groq import Groq
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-LLM_MODEL = "llama3.2"
+LLM_MODEL = "llama3-8b-8192"
+_api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+_client = Groq(api_key=_api_key)
 
 
 def _chat(prompt: str) -> str:
     """Single Ollama call — short helper used by parallel workers."""
-    response = ollama.chat(
+    response = _client.chat.completions.create(
         model=LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
-        options={"num_predict": 120},  # cap output tokens for speed
+        max_tokens=120,
     )
-    return response["message"]["content"].strip()
+    return response.choices[0].message.content.strip()
 
 
 def _history_text(history: list[dict], n: int = 4) -> str:
@@ -198,9 +202,9 @@ def generate_goal_response(
         ),
     })
 
-    response = ollama.chat(
+    response = _client.chat.completions.create(
         model=LLM_MODEL,
         messages=messages,
-        options={"num_predict": 200},
+        max_tokens=200,
     )
-    return response["message"]["content"].strip()
+    return response.choices[0].message.content.strip()

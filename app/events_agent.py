@@ -5,11 +5,11 @@ Semantic search agent for campus events.
 """
 
 import chromadb
-import ollama
+from sentence_transformers import SentenceTransformer
+_embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
 CHROMA_DIR      = "chroma_db"
 COLLECTION_NAME = "events"
-EMBED_MODEL     = "nomic-embed-text"
 DEFAULT_TOP_K   = 10
 
 
@@ -20,8 +20,7 @@ def search_events(query: str, top_k: int = DEFAULT_TOP_K) -> list[dict]:
     client = chromadb.PersistentClient(path=CHROMA_DIR)
     collection = client.get_collection(COLLECTION_NAME)
 
-    response = ollama.embeddings(model=EMBED_MODEL, prompt=query)
-    query_embedding = response["embedding"]
+    query_embedding = _embedder.encode(query).tolist()
 
     results = collection.query(
         query_embeddings=[query_embedding],
