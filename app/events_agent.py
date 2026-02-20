@@ -4,11 +4,12 @@ events_agent.py
 Semantic search agent for campus events.
 """
 
+import os
 import chromadb
 from sentence_transformers import SentenceTransformer
 _embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
-CHROMA_DIR      = "chroma_db"
+CHROMA_DIR      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
 COLLECTION_NAME = "events"
 DEFAULT_TOP_K   = 10
 

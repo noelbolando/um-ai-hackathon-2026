@@ -9,12 +9,13 @@ Given a plain-English query, it:
   3. Returns the top-N matching faculty as a list of dicts
 """
 
+import os
 import chromadb
 from sentence_transformers import SentenceTransformer
 _embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
 # ── Config ────────────────────────────────────────────────────────────────────
-CHROMA_DIR      = "chroma_db"
+CHROMA_DIR      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
 COLLECTION_NAME = "faculty"
 DEFAULT_TOP_K   = 10
 # ─────────────────────────────────────────────────────────────────────────────
