@@ -1,10 +1,12 @@
+<img width="277" height="250" alt="curio-icon" src="https://github.com/user-attachments/assets/518de5ac-0c17-48a8-a0b0-cd87644735f7" />
+
 # ✦ Curio ✦ 
 ## Your Academic Pathfinder
 
 This project was born out from the 2026 University of Michigan AI Hackathon
 Check out our [Live Demo!](https://curioapp.streamlit.app/)
 
-Curio is an AI-powered academic discovery tool that helps students find their niche. Given a learning goal — like *"I want to break into consulting"* or *"I want to understand machine learning"* — Curio searches across thousands of courses, faculty profiles, and campus events to surface the most relevant resources and explain why each one fits.
+Curios is an AI-powered personal learning coach that helps make the most out of college by curating the most relevant courses, faculty, and campus opportunities aligned with their goals. Given a learning goal — like *"I want to break into consulting"* or *"I want to understand machine learning"* — Curio searches across thousands of courses, faculty profiles, and campus events to surface the most relevant resources and explain why each one fits.
 
 ---
 
@@ -21,6 +23,8 @@ When a student enters a learning goal, Curio:
 ---
 
 ## Tech Stack
+
+Curio is a multi-Agentic system that utilizes RAG-based workflows to generate content to meet user requests.
 
 | Layer | Technology |
 |---|---|
