@@ -1,14 +1,5 @@
-· GITIGNORE
-Copy
-
-# Secrets — never commit
-.streamlit/secrets.toml
-
-# Python
 __pycache__/
 *.pyc
 *.pyo
 .env
-
-# Data (optional — comment out if you want data in the repo)
-# data/
+data/
